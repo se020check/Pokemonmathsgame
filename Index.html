@@ -45,6 +45,20 @@ Sweet — here’s the full index.html ready to drop in. It includes the PWA <he
   <script type="text/babel" data-presets="react">
 const { useState, useEffect } = React;
 
+    <!-- Your React app script -->
+  <script type="text/babel">
+    // Your app code here
+  </script>
+
+  <!-- Service worker registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js");
+    }
+  </script>
+</body>
+</html>
+
 /* =========================
    Static data & constants
    ========================= */
