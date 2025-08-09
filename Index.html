@@ -1,3 +1,5 @@
+Sweet — here’s the full index.html ready to drop in. It includes the PWA <head> setup, the full React game (gyms, classes, store, PC, evolutions, XP bounce), and the service worker registration at the bottom.
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -9,13 +11,16 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Tailwind + React + Babel -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <style>
-    html,body,#root { height:100%; margin:0 }
-    body { background:#f0f9ff; color:#0f172a }
+    html,body,#root{height:100%;margin:0}
+    body{background:#f0f9ff;color:#0f172a}
 
     /* Level-up bounce */
     @keyframes bounceUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
@@ -70,20 +75,13 @@ const MOVES = [
 /* 151 names (Gen 1) */
 const NAMES = ["Bulbasaur","Ivysaur","Venusaur","Charmander","Charmeleon","Charizard","Squirtle","Wartortle","Blastoise","Caterpie","Metapod","Butterfree","Weedle","Kakuna","Beedrill","Pidgey","Pidgeotto","Pidgeot","Rattata","Raticate","Spearow","Fearow","Ekans","Arbok","Pikachu","Raichu","Sandshrew","Sandslash","Nidoran♀","Nidorina","Nidoqueen","Nidoran♂","Nidorino","Nidoking","Clefairy","Clefable","Vulpix","Ninetales","Jigglypuff","Wigglytuff","Zubat","Golbat","Oddish","Gloom","Vileplume","Paras","Parasect","Venonat","Venomoth","Diglett","Dugtrio","Meowth","Persian","Psyduck","Golduck","Mankey","Primeape","Growlithe","Arcanine","Poliwag","Poliwhirl","Poliwrath","Abra","Kadabra","Alakazam","Machop","Machoke","Machamp","Bellsprout","Weepinbell","Victreebel","Tentacool","Tentacruel","Geodude","Graveler","Golem","Ponyta","Rapidash","Slowpoke","Slowbro","Magnemite","Magneton","Farfetch’d","Doduo","Dodrio","Seel","Dewgong","Grimer","Muk","Shellder","Cloyster","Gastly","Haunter","Gengar","Onix","Drowzee","Hypno","Krabby","Kingler","Voltorb","Electrode","Exeggcute","Exeggutor","Cubone","Marowak","Hitmonlee","Hitmonchan","Lickitung","Koffing","Weezing","Rhyhorn","Rhydon","Chansey","Tangela","Kangaskhan","Horsea","Seadra","Goldeen","Seaking","Staryu","Starmie","Mr. Mime","Scyther","Jynx","Electabuzz","Magmar","Pinsir","Tauros","Magikarp","Gyarados","Lapras","Ditto","Eevee","Vaporeon","Jolteon","Flareon","Porygon","Omanyte","Omastar","Kabuto","Kabutops","Aerodactyl","Snorlax","Articuno","Zapdos","Moltres","Dratini","Dragonair","Dragonite","Mewtwo","Mew"];
 
-/* Simple rarity-based pricing */
 const LEGENDARIES = new Set(["Articuno","Zapdos","Moltres","Mewtwo","Mew"]);
 const RARE = new Set(["Dragonite","Dragonair","Dratini","Snorlax","Lapras","Gyarados","Alakazam","Gengar","Scyther","Jolteon","Vaporeon","Flareon","Charizard","Blastoise","Venusaur","Aerodactyl"]);
 const UNCOMMON = new Set(["Pikachu","Eevee","Arcanine","Nidoking","Nidoqueen","Machamp","Golem","Starmie","Exeggutor","Rapidash","Onix","Magmar","Electabuzz","Pinsir","Tauros"]);
-
-function priceFor(name){
-  if (LEGENDARIES.has(name)) return 800;
-  if (RARE.has(name)) return 500;
-  if (UNCOMMON.has(name)) return 300;
-  return 150;
-}
+function priceFor(name){ if(LEGENDARIES.has(name))return 800; if(RARE.has(name))return 500; if(UNCOMMON.has(name))return 300; return 150; }
 const CATALOG = NAMES.map((n,i)=>({ name:n, dex:i+1, price: priceFor(n) }));
 
-/* Gen-1 evolutions (level, stone, trade, choice for Eevee) */
+/* Gen-1 evolutions */
 const EVOS = {
   "Bulbasaur": {"to":"Ivysaur","method":"level","at":16},
   "Ivysaur":   {"to":"Venusaur","method":"level","at":32},
@@ -232,4 +230,525 @@ function genHard(){
     const subtotal=each*qty; const after=Math.round(subtotal*(100-disc))/100; const ans=Math.round(pay-after);
     return { text:`${m} buys ${qty} items at ${each} coins each, ${disc}% off, pays with ${pay}. Change = ?`, answer:ans, explain:"Multiply, discount, subtract." }; }
   const shape=Math.random()<0.5?"rectangle":"triangle"; const a=randInt(6,25), b=randInt(6,25); const ans=shape==="rectangle"?a*b:(a*b)/2;
-  return { text: shape==="rectangle"?`${m}'s garden is ${a}×${b}. Area = ?`:`${m} flies over a triangle (base ${a}, height ${b}). Area = ?`, answer:
+  return { text: shape==="rectangle"?`${m}'s garden is ${a}×${b}. Area = ?`:`${m} flies over a triangle (base ${a}, height ${b}). Area = ?`, answer:ans, explain: shape==="rectangle"?"A=l×w":"A=(b×h)/2" };
+}
+
+/* =========================
+   UI components
+   ========================= */
+function XPBar({ level, xp, bounce }){
+  const need = xpForNext(level||1);
+  const pct = Math.min(100, Math.round(((xp||0)/need)*100));
+  return (
+    <div className={`w-full ${bounce ? "level-bounce" : ""}`}>
+      <div className="flex justify-between text-[10px] mb-0.5"><span>Lv {level||1}</span><span>{xp||0}/{need} XP</span></div>
+      <div className="h-2 bg-slate-200 rounded-full overflow-hidden"><div className="h-2 bg-indigo-500" style={{width:`${pct}%`}}></div></div>
+    </div>
+  );
+}
+function MonCard({ mon, bounce }){
+  return (
+    <div className="rounded-xl p-3 bg-white border shadow flex gap-2 items-center">
+      <img src={artUrl(mon.name)} alt={mon.name} className="w-12 h-12 object-contain"/>
+      <div className="flex-1">
+        <div className="text-sm font-bold">{mon.name}</div>
+        <XPBar level={mon.level||1} xp={mon.xp||0} bounce={bounce}/>
+      </div>
+    </div>
+  );
+}
+function HPBar({ label, hp, max, color }) {
+  const pct = Math.round((hp / max) * 100);
+  return (
+    <div className="w-full">
+      <div className="flex justify-between text-xs font-semibold mb-1"><span>{label}</span><span>{hp}/{max}</span></div>
+      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+        <div className="h-3" style={{ width: `${pct}%`, background: color || "#22c55e" }}></div>
+      </div>
+    </div>
+  );
+}
+function MapKanto({ defeatedGyms, classIndex, onSelectGym, onElite, unlockedElite }) {
+  const nodes = [
+    {x:20,y:20,label:"Pewter"}, {x:70,y:20,label:"Cerulean"},
+    {x:20,y:45,label:"Vermilion"}, {x:70,y:45,label:"Celadon"},
+    {x:20,y:70,label:"Fuchsia"}, {x:70,y:70,label:"Saffron"},
+    {x:20,y:95,label:"Cinnabar"}, {x:70,y:95,label:"Viridian"},
+  ];
+  return (
+    <div className="rounded-2xl bg-white shadow p-3">
+      <div className="text-sm font-semibold mb-2">Kanto Map</div>
+      <svg viewBox="0 0 100 120" className="w-full h-56 bg-sky-50 rounded-xl">
+        {nodes.map((n,i)=>(
+          <g key={i}>
+            <circle cx={n.x} cy={n.y} r="8" fill={defeatedGyms.has(i)?"#22c55e":"#94a3b8"} />
+            <text x={n.x} y={n.y+18} textAnchor="middle" fontSize="5">{n.label}</text>
+          </g>
+        ))}
+        <g>
+          <rect x="40" y="100" width="20" height="12" rx="2" fill={unlockedElite?"#f59e0b":"#cbd5e1"} />
+          <text x="50" y="108" textAnchor="middle" fontSize="5" fill="white">Elite 4</text>
+        </g>
+      </svg>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {GYMS.map((g,i)=>{
+          const classRange = CLASSES[classIndex].gymRange;
+          const allowed = i>=classRange[0] && i<=classRange[1];
+          return (
+            <button key={g.key} disabled={!allowed} onClick={()=> allowed && onSelectGym(i)}
+              className={`rounded-xl px-3 py-2 text-sm shadow ${allowed?"bg-indigo-600 text-white":"bg-slate-200 text-slate-500"}`}>
+              {g.name} Gym
+            </button>
+          );
+        })}
+      </div>
+      <button disabled={!unlockedElite} onClick={onElite} className={`mt-2 w/full rounded-xl px-3 py-2 text-sm shadow ${unlockedElite?"bg-amber-500 text-white":"bg-slate-200 text-slate-500"}`}>Challenge Elite Four</button>
+    </div>
+  );
+}
+
+/* =========================
+   App
+   ========================= */
+function App() {
+  const [screen, setScreen] = useState("title");
+  const [player, setPlayer] = useState({
+    team: [], box: [],
+    maxHp: 100, hp: 100, level: 1,
+    classIndex: 0, classPoints: 0, coins: 0,
+    items: {}, // {stone_fire, stone_water, stone_thunder, stone_leaf, stone_moon, link_cable}
+    defeatedGyms: []
+  });
+  const [starter, setStarter] = useState("Pikachu");
+  const [moveIndex, setMoveIndex] = useState(0);
+  const [problem, setProblem] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [status, setStatus] = useState("");
+  const [enemy, setEnemy] = useState({ name: "Pewter Gym Leader", maxHp: 90, hp: 90, color: GYMS[0].color });
+  const [gymIndex, setGymIndex] = useState(0);
+  const [rewardChoices, setRewardChoices] = useState([]);
+  const [levelBounceIds, setLevelBounceIds] = useState([]); // indices to bounce
+  const [evoQueue, setEvoQueue] = useState([]); // [{index,before,after}]
+  const defeatedSet = new Set(player.defeatedGyms);
+  const eliteUnlocked = (player.classIndex===CLASSES.length-1) && defeatedSet.size===GYMS.length;
+
+  // Title screen
+  if (screen === "title") return (
+    <div className="px-6 py-8 flex flex-col gap-4">
+      <h1 className="text-3xl font-extrabold">Pokémon Battle Maths</h1>
+      <p className="text-slate-600">Pick a starter. Correct answers give XP to the whole party. Watch the XP bars bounce on level-up—and enjoy evolution animations!</p>
+      <div className="grid grid-cols-2 gap-3">
+        {["Pikachu","Charmander","Bulbasaur","Squirtle"].map(n => (
+          <button key={n} onClick={()=>setStarter(n)} className={`rounded-2xl p-4 shadow ${starter===n?"ring-2 ring-slate-900":""}`}>
+            <div className="font-bold">{n}</div>
+          </button>
+        ))}
+      </div>
+      <button onClick={()=>{
+        setPlayer(p=>({...p, team:[{ name: starter, level: 5, xp: 0 }]}));
+        setScreen("map");
+      }} className="mt-2 rounded-2xl px-5 py-3 bg-indigo-600 text-white font-semibold">Begin Adventure</button>
+    </div>
+  );
+
+  // Map screen
+  if (screen === "map") return (
+    <div className="px-4 py-4 flex flex-col gap-3">
+      <div className="rounded-2xl p-4 bg-white shadow">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-bold">{CLASSES[player.classIndex].name}</div>
+          <div className="text-sm">Coins: <span className="font-bold">{player.coins}</span></div>
+        </div>
+        <div className="text-xs text-slate-500 mb-1">Points: {player.classPoints}/{CLASSES[player.classIndex].goal} • Gyms cleared: {defeatedSet.size}/8</div>
+        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden"><div className="h-3 bg-amber-500" style={{width:(Math.min(100,Math.round((player.classPoints/CLASSES[player.classIndex].goal)*100)))+'%'}}></div></div>
+      </div>
+
+      <div className="rounded-2xl bg-white shadow p-3">
+        <div className="text-sm font-semibold mb-2">Party (tap PC to manage)</div>
+        <div className="grid grid-cols-1 gap-2">
+          {player.team.map((m,i)=>(<MonCard key={i} mon={m} bounce={levelBounceIds.includes(i)} />))}
+        </div>
+      </div>
+
+      <MapKanto
+        defeatedGyms={defeatedSet}
+        classIndex={player.classIndex}
+        onSelectGym={(i)=> startGymBattle(i)}
+        onElite={()=>{}}
+        unlockedElite={eliteUnlocked}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={()=>setScreen("store")} className="rounded-2xl px-4 py-3 bg-amber-500 text-white font-semibold shadow">Store</button>
+        <button onClick={()=>setScreen("pc")} className="rounded-2xl px-4 py-3 bg-slate-900 text-white font-semibold shadow">Open PC</button>
+      </div>
+    </div>
+  );
+
+  /* ---- Battle helpers ---- */
+  function startGymBattle(idx) {
+    setGymIndex(idx);
+    setEnemy({ name: `${GYMS[idx].name} Gym – ${GYMS[idx].leader}`, maxHp: 85 + idx*15, hp: 85 + idx*15, color: GYMS[idx].color });
+    setPlayer(p => ({ ...p, hp: p.maxHp }));
+    setScreen("battle");
+    spawnProblem();
+  }
+  function spawnProblem() {
+    const diff = MOVES[moveIndex].diff;
+    const p = diff==="easy"?genEasy():diff==="medium"?genMedium():genHard();
+    p.options = shuffleAnswers(p.answer); p.explain = p.explain || "";
+    setProblem(p); setStatus("");
+    setTimeLeft(MOVES[moveIndex].time);
+  }
+  useEffect(() => { if (screen==="battle") spawnProblem(); }, [moveIndex]);
+
+  useEffect(() => {
+    if (screen !== "battle" || !problem) return;
+    const id = setInterval(() => {
+      setTimeLeft(t => { if (t<=1) { clearInterval(id); onAnswer(null); return 0; } return t-1; });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [problem?.text, screen]);
+
+  function gainPartyXP(team, baseXp){
+    let evolutions = [];
+    const nt = team.map((mon, idx)=>{
+      let lvl = mon.level || 1;
+      let xp  = (mon.xp || 0) + baseXp;
+      let m = {...mon};
+      let leveled = false;
+      while (xp >= xpForNext(lvl) && lvl < 100) {
+        xp -= xpForNext(lvl); lvl += 1; leveled = true;
+        const evo = EVOS[m.name];
+        if (evo && evo.method === "level" && lvl >= (evo.at||999)) {
+          evolutions.push({ index: idx, before: m.name, after: evo.to });
+          m.name = evo.to;
+        }
+      }
+      m.level = lvl; m.xp = xp; m._leveled = leveled;
+      return m;
+    });
+    return [nt, evolutions];
+  }
+
+  function award(points, xp) {
+    setPlayer(p => {
+      let classPoints = p.classPoints + points;
+      let coins = p.coins + points;
+      const [newTeam, evolutions] = gainPartyXP(p.team.map(m => ({...m})), xp);
+      const bounce = [];
+      newTeam.forEach((m, i) => { if (m._leveled) bounce.push(i); delete m._leveled; });
+      setLevelBounceIds(bounce);
+      setTimeout(()=>setLevelBounceIds([]), 700);
+      if (evolutions.length) setEvoQueue(q => [...q, ...evolutions]);
+      return { ...p, classPoints, coins, team: newTeam };
+    });
+  }
+
+  function onAnswer(chosen) {
+    const move = MOVES[moveIndex];
+    const correct = chosen === Math.round(problem?.answer);
+    if (chosen === null) {
+      setStatus("Time's up! You took damage.");
+      setPlayer(p => ({...p, hp: Math.max(0, p.hp - move.dmg/2)}));
+    } else if (correct) {
+      setStatus("Nice! Super effective!");
+      setEnemy(e => ({...e, hp: Math.max(0, e.hp - move.dmg)}));
+      award(move.points, move.xp);
+    } else {
+      setStatus("Missed! It's not very effective…");
+      setPlayer(p => ({...p, hp: Math.max(0, p.hp - Math.ceil(move.dmg/1.5))}));
+    }
+
+    setTimeout(() => {
+      if (enemy.hp - (chosen && correct ? move.dmg:0) <= 0) onWinBattle();
+      else if (player.hp - (chosen===null ? move.dmg/2 : correct?0:Math.ceil(move.dmg/1.5)) <= 0) onLoseBattle();
+      else spawnProblem();
+    }, 600);
+  }
+
+  function onWinBattle() {
+    if (!defeatedSet.has(gymIndex)) {
+      setPlayer(p => ({...p, defeatedGyms: [...p.defeatedGyms, gymIndex]}));
+      const range = CLASSES[player.classIndex].gymRange;
+      const cleared = new Set([...player.defeatedGyms, gymIndex]);
+      const both = cleared.has(range[0]) && cleared.has(range[1]);
+      const enoughPts = (player.classPoints >= CLASSES[player.classIndex].goal);
+      if (both && enoughPts && player.classIndex < CLASSES.length-1) {
+        setPlayer(p => ({...p, classIndex: p.classIndex+1, classPoints: 0 }));
+      }
+    }
+    const options = [];
+    while (options.length < 3) {
+      const pick = CATALOG[Math.floor(Math.random()*CATALOG.length)];
+      if (!options.find(o=>o.name===pick.name)) options.push(pick);
+    }
+    setRewardChoices(options);
+    setScreen("gymReward");
+  }
+  function onLoseBattle() {
+    setStatus("You fainted! Rest up and try again.");
+    setTimeout(() => { setPlayer(p => ({...p, hp: p.maxHp})); setScreen("map"); }, 1000);
+  }
+
+  // Battle screen
+  if (screen === "battle" && problem) return (
+    <div className="px-4 py-4 flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setScreen("map")} className="text-sm px-3 py-2 rounded-xl bg-slate-200">Back</button>
+        <div className="text-sm font-semibold">Time: {Math.floor(timeLeft/60)}:{String(timeLeft%60).padStart(2,"0")}</div>
+      </div>
+      <div className="rounded-2xl p-4 shadow bg-white">
+        <HPBar label={enemy.name} hp={enemy.hp} max={enemy.maxHp} color={enemy.color} />
+      </div>
+      <div className="rounded-2xl p-4 shadow bg-white">
+        <HPBar label={`You (Lv ${player.level})`} hp={player.hp} max={player.maxHp} color="#22c55e" />
+      </div>
+      <div className="rounded-2xl p-4 shadow bg-white">
+        <div className="text-slate-600 text-sm mb-2">Moves</div>
+        <div className="grid grid-cols-3 gap-2">
+          {MOVES.map((m,i) => (
+            <button key={m.key} onClick={() => setMoveIndex(i)} className={`rounded-2xl px-3 py-2 shadow ${i===moveIndex?"bg-indigo-600 text-white":"bg-slate-100"}`}>
+              <div className="text-sm font-bold leading-tight">{m.name}</div>
+              <div className="text-[10px] opacity-80">+{m.points} pts • +{m.xp} XP</div>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl p-4 shadow bg-white">
+        <div className="text-sm text-slate-500 mb-1">{MOVES[moveIndex].name} • +{MOVES[moveIndex].points} pts • +{MOVES[moveIndex].xp} XP (to each)</div>
+        <div className="text-xl font-bold mb-3">{problem.text}</div>
+        <div className="grid grid-cols-2 gap-3">
+          {problem.options.map((opt) => (
+            <button key={String(opt)} onClick={() => onAnswer(opt)} className="rounded-2xl p-4 bg-emerald-500 text-white font-semibold shadow active:scale-95">
+              {String(opt)}
+            </button>
+          ))}
+        </div>
+        {status && <div className="mt-3 text-sm">{status}</div>}
+
+        {/* Evolution overlay */}
+        {evoQueue.length>0 && (
+          <div className="overlay">
+            <div className="bg-white rounded-2xl p-6 text-center max-w-xs w-full shine">
+              <div className="text-lg font-bold mb-2">What? {evoQueue[0].before} is evolving!</div>
+              <div className="flex items-center justify-center">
+                <img src={artUrl(evoQueue[0].before)} className="w-24 h-24 object-contain opacity-80" />
+                <span className="mx-2">→</span>
+                <img src={artUrl(evoQueue[0].after)} className="w-24 h-24 object-contain evolve-pulse" />
+              </div>
+              <button onClick={()=>setEvoQueue(q=>q.slice(1))} className="mt-4 rounded-xl px-4 py-2 bg-indigo-600 text-white font-semibold">Awesome!</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Gym reward screen
+  if (screen === "gymReward") return (
+    <div className="px-4 py-6">
+      <h2 className="text-2xl font-bold mb-2">Choose your Reward</h2>
+      <p className="text-slate-600 mb-3">Pick 1 of these 3 Pokémon to join your party or PC.</p>
+      <div className="grid grid-cols-1 gap-3">
+        {rewardChoices.map(mon => (
+          <div key={mon.name} className="rounded-2xl p-4 bg-white shadow border">
+            <div className="flex gap-3 items-center">
+              <img className="w-14 h-14 object-contain" src={artUrl(mon.name)} />
+              <div className="font-bold">{mon.name}</div>
+            </div>
+            <button onClick={()=>{
+              setPlayer(p => {
+                const newMon = { name: mon.name, level: 5, xp: 0 };
+                if (p.team.length < 6) return { ...p, team: [...p.team, newMon] };
+                return { ...p, box: [...p.box, newMon] };
+              });
+              setScreen("map");
+            }} className="mt-2 rounded-xl px-4 py-2 bg-emerald-500 text-white font-semibold">Choose</button>
+          </div>
+        ))}
+      </div>
+      <button onClick={()=>setScreen("map")} className="mt-3 w-full rounded-2xl px-4 py-3 bg-slate-200 font-semibold">Skip</button>
+    </div>
+  );
+
+  // Store (evolution items + a small Pokémon sample grid)
+  if (screen === "store") {
+    const SHOP_ITEMS = [
+      { key:"stone_fire",   name:"Fire Stone",   price: 300 },
+      { key:"stone_water",  name:"Water Stone",  price: 300 },
+      { key:"stone_thunder",name:"Thunder Stone",price: 300 },
+      { key:"stone_leaf",   name:"Leaf Stone",   price: 300 },
+      { key:"stone_moon",   name:"Moon Stone",   price: 350 },
+      { key:"link_cable",   name:"Link Cable",   price: 400 },
+    ];
+    return (
+      <div className="px-4 py-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="text-lg font-bold">Poké Mart</div>
+          <div className="text-sm">Coins: <span className="font-bold">{player.coins}</span></div>
+        </div>
+
+        <div className="rounded-2xl p-3 bg-white shadow">
+          <div className="text-sm font-semibold mb-2">Evolution Items</div>
+          <div className="grid grid-cols-2 gap-2">
+            {SHOP_ITEMS.map(it => (
+              <div key={it.key} className="rounded-xl p-3 border bg-slate-50">
+                <div className="text-sm font-bold">{it.name}</div>
+                <div className="text-xs text-slate-500 mb-2">Price: {it.price}</div>
+                <button onClick={()=>{
+                  setPlayer(p=>{
+                    if (p.coins < it.price) return p;
+                    const items = {...(p.items||{})};
+                    items[it.key] = (items[it.key]||0)+1;
+                    return { ...p, coins: p.coins - it.price, items };
+                  });
+                }} className="w-full rounded-lg px-3 py-2 bg-emerald-500 text-white text-sm font-semibold">Buy</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-3 bg-white shadow">
+          <div className="text-sm font-semibold mb-2">Pokémon (sample)</div>
+          <div className="grid grid-cols-2 gap-2">
+            {CATALOG.slice(0,20).map(mon => (
+              <div key={mon.name} className="rounded-2xl p-3 bg-white shadow border">
+                <div className="flex gap-2 items-center">
+                  <img className="w-12 h-12 object-contain" src={artUrl(mon.name)} />
+                  <div>
+                    <div className="text-sm font-bold">{mon.name}</div>
+                    <div className="text-xs text-slate-500">Price: {mon.price}</div>
+                  </div>
+                </div>
+                <button onClick={()=>{
+                  setPlayer(p=>{
+                    if (p.coins < mon.price) return p;
+                    const newMon = { name: mon.name, level: 5, xp: 0 };
+                    if (p.team.length < 6) return { ...p, coins: p.coins - mon.price, team: [...p.team, newMon] };
+                    return { ...p, coins: p.coins - mon.price, box: [...p.box, newMon] };
+                  });
+                }} className="w-full mt-2 rounded-xl px-3 py-2 bg-amber-500 text-white text-sm font-semibold">Buy</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button onClick={()=>setScreen("map")} className="w-full rounded-2xl px-4 py-3 bg-slate-900 text-white font-semibold">Back to Map</button>
+      </div>
+    );
+  }
+
+  // PC (view/withdraw/deposit/release + item-based evolve)
+  if (screen === "pc") return (
+    <div className="px-4 py-4 flex flex-col gap-3">
+      <div className="rounded-2xl p-4 bg-white shadow">
+        <div className="text-lg font-bold">PC Storage</div>
+        <div className="text-xs text-slate-600">Party (max 6): {player.team.map(m=>`${m.name} Lv${m.level||1}`).join(", ") || "(empty)"} </div>
+        <div className="text-xs text-slate-600 mt-1">
+          Items: {Object.entries(player.items).length ? Object.entries(player.items).map(([k,v])=>`${k}:${v}`).join(" • ") : "(none)"} 
+        </div>
+      </div>
+
+      <div className="rounded-2xl p-4 bg-white shadow">
+        <div className="text-sm font-semibold mb-2">Your Box ({player.box.length})</div>
+        {player.box.length===0 ? <div className="text-sm text-slate-500">No Pokémon in storage.</div> : (
+          <div className="grid grid-cols-2 gap-2">
+            {player.box.map((m,idx)=>(
+              <div key={idx} className="rounded-xl p-3 border bg-slate-50">
+                <div className="flex gap-2 items-center">
+                  <img src={artUrl(m.name)} className="w-12 h-12 object-contain"/>
+                  <div>
+                    <div className="text-sm font-bold">{m.name}</div>
+                    <div className="text-xs">Lv {m.level||1}</div>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={()=>{
+                    setPlayer(p=>{
+                      if (p.team.length>=6) return p;
+                      const nb = p.box.slice(); const [mon] = nb.splice(idx,1);
+                      return { ...p, team:[...p.team, mon], box: nb };
+                    });
+                  }} className="flex-1 rounded-lg px-2 py-1 bg-indigo-600 text-white text-xs">Withdraw</button>
+                  <button onClick={()=>{
+                    setPlayer(p=>{
+                      const nb = p.box.slice(); nb.splice(idx,1); return { ...p, box: nb };
+                    });
+                  }} className="rounded-lg px-2 py-1 bg-rose-200 text-rose-900 text-xs">Release</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl p-4 bg-white shadow">
+        <div className="text-sm font-semibold mb-2">Party</div>
+        {player.team.length===0 ? <div className="text-sm text-slate-500">Party is empty.</div> : (
+          <div className="grid grid-cols-1 gap-2">
+            {player.team.map((m,idx)=>(
+              <div key={idx} className="rounded-xl p-3 border bg-white">
+                <div className="flex gap-3 items-center">
+                  <img src={artUrl(m.name)} className="w-12 h-12 object-contain"/>
+                  <div className="flex-1">
+                    <div className="text-sm font-bold">{m.name}</div>
+                    <XPBar level={m.level||1} xp={m.xp||0} />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={()=>{
+                    setPlayer(p=>{
+                      const nt = p.team.slice(); const [mon] = nt.splice(idx,1);
+                      return { ...p, team: nt, box: [...p.box, mon] };
+                    });
+                  }} className="rounded-lg px-2 py-1 bg-slate-200 text-xs">Deposit</button>
+
+                  {/* Item/choice evolve button */}
+                  {canEvolve(m, {...player.items}) && EVOS[m.name]?.method!=="choice" && (
+                    <button onClick={()=>{
+                      setPlayer(p=>{
+                        const items = {...p.items};
+                        const nt = p.team.slice();
+                        nt[idx] = evolveWithItem(nt[idx], items);
+                        return { ...p, team: nt, items };
+                      });
+                    }} className="rounded-lg px-2 py-1 bg-emerald-500 text-white text-xs">Evolve</button>
+                  )}
+                  {EVOS[m.name]?.method==="choice" && (
+                    <button onClick={()=>{
+                      const choice = window.prompt("Eevee can evolve into: Vaporeon, Jolteon, or Flareon. Type one:");
+                      if (!choice) return;
+                      const pick = ["Vaporeon","Jolteon","Flareon"].includes(choice) ? choice : null;
+                      if (!pick) return alert("Please type Vaporeon, Jolteon, or Flareon exactly.");
+                      setPlayer(p=>{
+                        const nt = p.team.slice(); nt[idx] = { ...nt[idx], name: pick };
+                        return { ...p, team: nt };
+                      });
+                    }} className="rounded-lg px-2 py-1 bg-amber-500 text-white text-xs">Evolve (choose)</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button onClick={()=>setScreen("map")} className="rounded-2xl px-4 py-3 bg-slate-900 text-white font-semibold">Back to Map</button>
+    </div>
+  );
+
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+
+  <!-- Service worker registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js"));
+    }
+  </script>
+</body>
+</html>
