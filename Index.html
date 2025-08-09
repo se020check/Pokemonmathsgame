@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Pokémon Battle Maths</title>
+  <meta name="theme-color" content="#111827" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html,body,#root { height:100%; margin:0 }
+    body { background:#f0f9ff; color:#0f172a }
+
+    /* Level-up bounce */
+    @keyframes bounceUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .level-bounce { animation: bounceUp 0.6s ease; }
+
+    /* Evolution glam */
+    @keyframes evolvePulse { 0%{opacity:0; transform:scale(0.9)} 50%{opacity:1; transform:scale(1.05)} 100%{opacity:1; transform:scale(1)} }
+    .evolve-pulse { animation: evolvePulse 1200ms ease-in-out; }
+    .shine { position:relative; overflow:hidden; }
+    .shine::after {
+      content:''; position:absolute; top:-150%; left:-150%; width:300%; height:300%;
+      background:radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 60%);
+      animation: shineFlash 900ms ease-in-out; pointer-events:none;
+    }
+    @keyframes shineFlash { from{transform:translate(-20%,-20%)} to{transform:translate(20%,20%)} }
+    .overlay { position:fixed; inset:0; background:rgba(15,23,42,0.85); display:flex; align-items:center; justify-content:center; z-index:50; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+/* =========================
+   Static data & constants
+   ========================= */
+const CLASSES = [
+  { key: "normal", name: "Normal Class", goal: 1000, gymRange: [0,1] },
+  { key: "great",  name: "Great Class",  goal: 2000, gymRange: [2,3] },
+  { key: "ultra",  name: "Ultra Class",  goal: 3000, gymRange: [4,5] },
+  { key: "master", name: "Master Class", goal: 4000, gymRange: [6,7] },
+];
+
+const GYMS = [
+  { key:"pewter",   name:"Pewter",   leader:"Brock",   color:"#9AA0A6" },
+  { key:"cerulean", name:"Cerulean", leader:"Misty",   color:"#6FA8DC" },
+  { key:"vermilion",name:"Vermilion",leader:"Lt. Surge", color:"#FFD966" },
+  { key:"celadon",  name:"Celadon",  leader:"Erika",   color:"#93C47D" },
+  { key:"fuchsia",  name:"Fuchsia",  leader:"Koga",    color:"#DA70D6" },
+  { key:"saffron",  name:"Saffron",  leader:"Sabrina", color:"#F6B26B" },
+  { key:"cinnabar", name:"Cinnabar", leader:"Blaine",  color:"#EA9999" },
+  { key:"viridian", name:"Viridian", leader:"Giovanni", color:"#6AA84F" },
+];
+
+const MOVES = [
+  { key: "quick",    name: "Quick Attack", diff: "easy",   dmg: 10, time: 30, points: 10, xp: 12, desc:"1-step arithmetic" },
+  { key: "power",    name: "Power Move",   diff: "medium", dmg: 20, time: 60, points: 20, xp: 22, desc:"2-step, rates, fractions" },
+  { key: "ultimate", name: "Ultimate",     diff: "hard",   dmg: 40, time: 75, points: 40, xp: 35, desc:"Algebra & multi-step" },
+];
+
+/* 151 names (Gen 1) */
+const NAMES = ["Bulbasaur","Ivysaur","Venusaur","Charmander","Charmeleon","Charizard","Squirtle","Wartortle","Blastoise","Caterpie","Metapod","Butterfree","Weedle","Kakuna","Beedrill","Pidgey","Pidgeotto","Pidgeot","Rattata","Raticate","Spearow","Fearow","Ekans","Arbok","Pikachu","Raichu","Sandshrew","Sandslash","Nidoran♀","Nidorina","Nidoqueen","Nidoran♂","Nidorino","Nidoking","Clefairy","Clefable","Vulpix","Ninetales","Jigglypuff","Wigglytuff","Zubat","Golbat","Oddish","Gloom","Vileplume","Paras","Parasect","Venonat","Venomoth","Diglett","Dugtrio","Meowth","Persian","Psyduck","Golduck","Mankey","Primeape","Growlithe","Arcanine","Poliwag","Poliwhirl","Poliwrath","Abra","Kadabra","Alakazam","Machop","Machoke","Machamp","Bellsprout","Weepinbell","Victreebel","Tentacool","Tentacruel","Geodude","Graveler","Golem","Ponyta","Rapidash","Slowpoke","Slowbro","Magnemite","Magneton","Farfetch’d","Doduo","Dodrio","Seel","Dewgong","Grimer","Muk","Shellder","Cloyster","Gastly","Haunter","Gengar","Onix","Drowzee","Hypno","Krabby","Kingler","Voltorb","Electrode","Exeggcute","Exeggutor","Cubone","Marowak","Hitmonlee","Hitmonchan","Lickitung","Koffing","Weezing","Rhyhorn","Rhydon","Chansey","Tangela","Kangaskhan","Horsea","Seadra","Goldeen","Seaking","Staryu","Starmie","Mr. Mime","Scyther","Jynx","Electabuzz","Magmar","Pinsir","Tauros","Magikarp","Gyarados","Lapras","Ditto","Eevee","Vaporeon","Jolteon","Flareon","Porygon","Omanyte","Omastar","Kabuto","Kabutops","Aerodactyl","Snorlax","Articuno","Zapdos","Moltres","Dratini","Dragonair","Dragonite","Mewtwo","Mew"];
+
+/* Simple rarity-based pricing */
+const LEGENDARIES = new Set(["Articuno","Zapdos","Moltres","Mewtwo","Mew"]);
+const RARE = new Set(["Dragonite","Dragonair","Dratini","Snorlax","Lapras","Gyarados","Alakazam","Gengar","Scyther","Jolteon","Vaporeon","Flareon","Charizard","Blastoise","Venusaur","Aerodactyl"]);
+const UNCOMMON = new Set(["Pikachu","Eevee","Arcanine","Nidoking","Nidoqueen","Machamp","Golem","Starmie","Exeggutor","Rapidash","Onix","Magmar","Electabuzz","Pinsir","Tauros"]);
+
+function priceFor(name){
+  if (LEGENDARIES.has(name)) return 800;
+  if (RARE.has(name)) return 500;
+  if (UNCOMMON.has(name)) return 300;
+  return 150;
+}
+const CATALOG = NAMES.map((n,i)=>({ name:n, dex:i+1, price: priceFor(n) }));
+
+/* Gen-1 evolutions (level, stone, trade, choice for Eevee) */
+const EVOS = {
+  "Bulbasaur": {"to":"Ivysaur","method":"level","at":16},
+  "Ivysaur":   {"to":"Venusaur","method":"level","at":32},
+  "Charmander":{"to":"Charmeleon","method":"level","at":16},
+  "Charmeleon":{"to":"Charizard","method":"level","at":36},
+  "Squirtle":  {"to":"Wartortle","method":"level","at":16},
+  "Wartortle": {"to":"Blastoise","method":"level","at":36},
+  "Caterpie":  {"to":"Metapod","method":"level","at":7},
+  "Metapod":   {"to":"Butterfree","method":"level","at":10},
+  "Weedle":    {"to":"Kakuna","method":"level","at":7},
+  "Kakuna":    {"to":"Beedrill","method":"level","at":10},
+  "Pidgey":    {"to":"Pidgeotto","method":"level","at":18},
+  "Pidgeotto": {"to":"Pidgeot","method":"level","at":36},
+  "Rattata":   {"to":"Raticate","method":"level","at":20},
+  "Spearow":   {"to":"Fearow","method":"level","at":20},
+  "Ekans":     {"to":"Arbok","method":"level","at":22},
+  "Pikachu":   {"to":"Raichu","method":"stone","stone":"thunder"},
+  "Sandshrew": {"to":"Sandslash","method":"level","at":22},
+  "Nidoran♀": {"to":"Nidorina","method":"level","at":16},
+  "Nidorina": {"to":"Nidoqueen","method":"stone","stone":"moon"},
+  "Nidoran♂": {"to":"Nidorino","method":"level","at":16},
+  "Nidorino": {"to":"Nidoking","method":"stone","stone":"moon"},
+  "Clefairy": {"to":"Clefable","method":"stone","stone":"moon"},
+  "Vulpix": {"to":"Ninetales","method":"stone","stone":"fire"},
+  "Jigglypuff": {"to":"Wigglytuff","method":"stone","stone":"moon"},
+  "Zubat": {"to":"Golbat","method":"level","at":22},
+  "Oddish": {"to":"Gloom","method":"level","at":21},
+  "Gloom": {"to":"Vileplume","method":"stone","stone":"leaf"},
+  "Paras": {"to":"Parasect","method":"level","at":24},
+  "Venonat": {"to":"Venomoth","method":"level","at":31},
+  "Diglett": {"to":"Dugtrio","method":"level","at":26},
+  "Meowth": {"to":"Persian","method":"level","at":28},
+  "Psyduck": {"to":"Golduck","method":"level","at":33},
+  "Mankey": {"to":"Primeape","method":"level","at":28},
+  "Growlithe": {"to":"Arcanine","method":"stone","stone":"fire"},
+  "Poliwag": {"to":"Poliwhirl","method":"level","at":25},
+  "Poliwhirl": {"to":"Poliwrath","method":"stone","stone":"water"},
+  "Abra": {"to":"Kadabra","method":"level","at":16},
+  "Kadabra": {"to":"Alakazam","method":"trade"},
+  "Machop": {"to":"Machoke","method":"level","at":28},
+  "Machoke": {"to":"Machamp","method":"trade"},
+  "Bellsprout": {"to":"Weepinbell","method":"level","at":21},
+  "Weepinbell": {"to":"Victreebel","method":"stone","stone":"leaf"},
+  "Tentacool": {"to":"Tentacruel","method":"level","at":30},
+  "Geodude": {"to":"Graveler","method":"level","at":25},
+  "Graveler": {"to":"Golem","method":"trade"},
+  "Ponyta": {"to":"Rapidash","method":"level","at":40},
+  "Slowpoke": {"to":"Slowbro","method":"level","at":37},
+  "Magnemite": {"to":"Magneton","method":"level","at":30},
+  "Doduo": {"to":"Dodrio","method":"level","at":31},
+  "Seel": {"to":"Dewgong","method":"level","at":34},
+  "Grimer": {"to":"Muk","method":"level","at":38},
+  "Shellder": {"to":"Cloyster","method":"stone","stone":"water"},
+  "Gastly": {"to":"Haunter","method":"level","at":25},
+  "Haunter": {"to":"Gengar","method":"trade"},
+  "Onix": {},
+  "Drowzee": {"to":"Hypno","method":"level","at":26},
+  "Krabby": {"to":"Kingler","method":"level","at":28},
+  "Voltorb": {"to":"Electrode","method":"level","at":30},
+  "Exeggcute": {"to":"Exeggutor","method":"stone","stone":"leaf"},
+  "Cubone": {"to":"Marowak","method":"level","at":28},
+  "Koffing": {"to":"Weezing","method":"level","at":35},
+  "Rhyhorn": {"to":"Rhydon","method":"level","at":42},
+  "Horsea": {"to":"Seadra","method":"level","at":32},
+  "Goldeen": {"to":"Seaking","method":"level","at":33},
+  "Staryu": {"to":"Starmie","method":"stone","stone":"water"},
+  "Magikarp": {"to":"Gyarados","method":"level","at":20},
+  "Eevee": {"to":"EeveeEvolve","method":"choice"},
+  "Omanyte": {"to":"Omastar","method":"level","at":40},
+  "Kabuto": {"to":"Kabutops","method":"level","at":40},
+  "Dratini": {"to":"Dragonair","method":"level","at":30},
+  "Dragonair": {"to":"Dragonite","method":"level","at":55},
+};
+
+/* =========================
+   Helpers
+   ========================= */
+const randInt = (a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const choice = (arr)=>arr[randInt(0,arr.length-1)];
+const xpForNext = (lvl)=> 50 + (lvl-1)*25;
+const shuffleAnswers=(correct)=>{
+  const s=new Set([Math.round(correct)]);
+  while(s.size<4){ const d=randInt(-10,10)||1; s.add(Math.round(correct+d)); }
+  return Array.from(s).sort(()=>Math.random()-0.5);
+};
+const artUrl = (name)=>{ const c = CATALOG.find(c=>c.name===name); return c?`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${c.dex}.png`:""; };
+
+/* Item evolution helpers */
+function canEvolve(mon, items){
+  const evo = EVOS[mon.name];
+  if (!evo || !evo.to) return false;
+  if (evo.method === "level") return (mon.level||1) >= (evo.at||999);
+  if (evo.method === "stone") { const key = `stone_${evo.stone}`; return (items[key]||0) > 0; }
+  if (evo.method === "trade") { return (items["link_cable"]||0) > 0; }
+  if (evo.method === "choice") return true;
+  return false;
+}
+function evolveWithItem(mon, items){
+  const evo = EVOS[mon.name];
+  if (!evo || !evo.to) return mon;
+  if (evo.method==="stone"){
+    const key = `stone_${evo.stone}`;
+    if ((items[key]||0)<=0) return mon;
+    items[key]-=1; return {...mon, name: evo.to};
+  }
+  if (evo.method==="trade"){
+    if ((items["link_cable"]||0)<=0) return mon;
+    items["link_cable"]-=1; return {...mon, name: evo.to};
+  }
+  return mon;
+}
+
+/* =========================
+   Problem generators (themed)
+   ========================= */
+const THEME_POOL = ["Pikachu","Eevee","Bulbasaur","Charmander","Squirtle","Jigglypuff","Geodude","Onix","Abra","Gastly","Magikarp","Gyarados","Snorlax","Dratini"];
+const themedName=()=>choice(THEME_POOL);
+
+function genEasy(){
+  const m=themedName(); const ops=["+","-","×","÷"]; const op=choice(ops);
+  let a=randInt(10,99), b=randInt(2,12), ans;
+  if(op==="+"){ ans=a+b; return { text:`${m} finds ${a} berries and ${b} more. Total = ?`, answer:ans, explain:"Add the numbers." }; }
+  if(op=="-"){ ans=a-b; return { text:`${m} has ${a} candies and gives away ${b}. Left = ?`, answer:ans, explain:"Subtract." }; }
+  if(op==="×"){ ans=a*b; return { text:`${m} trains ${a} minutes for ${b} days. Total minutes = ?`, answer:ans, explain:"Multiply." }; }
+  b=[2,3,4,5,6,8,10,12][randInt(0,7)]; a=b*randInt(2,12); ans=a/b;
+  return { text:`${m} shares ${a} berries among ${b} friends equally. Each gets = ?`, answer:ans, explain:"Divide equally." };
+}
+function genMedium(){
+  const m=themedName(); const t=choice(["twoStep","rate","fraction","decimal"]);
+  if(t==="twoStep"){ const a=randInt(6,25),b=randInt(6,12),c=randInt(10,50); const mult=a*b; const plus=Math.random()<0.5; const ans=plus?mult+c:mult-c;
+    return { text:`${m} collects ${a} Pokéblocks in ${b} boxes ${plus?"and finds":"but drops"} ${c}. Total = ?`, answer:ans, explain:"Multiply then add/subtract." }; }
+  if(t==="rate"){ const dist=randInt(120,480),hrs=choice([2,3,4,5,6]); const ans=dist/hrs;
+    return { text:`${m} runs ${dist} m in ${hrs} min. Speed (m/min) = ?`, answer:ans, explain:"Distance ÷ time." }; }
+  if(t==="fraction"){ const num=choice([1,2,3]),den=choice([4,5,8,10]); const qty=den*randInt(4,25); const ans=(num/den)*qty;
+    return { text:`${m} eats ${num}/${den} of ${qty} berries. How many?`, answer:ans, explain:"Multiply fraction by whole." }; }
+  const price=randInt(150,950)/10, count=randInt(2,9); const ans=Math.round(price*count*10)/10;
+  return { text:`Poké Balls cost ${price.toFixed(1)} each. ${m} buys ${count}. Total = ?`, answer:ans, explain:"Multiply decimal by whole." };
+}
+function genHard(){
+  const m=themedName(); const t=choice(["percent","algebra","multi","area"]);
+  if(t==="percent"){ const price=randInt(200,1200), off=choice([10,15,20,25,30]); const ans=Math.round(price*(100-off)/100);
+    return { text:`${m} buys a potion at ${price} coins with ${off}% off. Pay = ?`, answer:ans, explain:"Apply % discount." }; }
+  if(t==="algebra"){ const a=randInt(2,12), x=randInt(3,15), b=randInt(5,30), c=a*x+b;
+    return { text:`Solve x for ${m}: ${a}x + ${b} = ${c}`, answer:x, explain:"Subtract b, divide by a." }; }
+  if(t==="multi"){ const each=randInt(90,180), qty=randInt(4,9), disc=choice([0,10,20]), pay=choice([1000,1500,2000]);
+    const subtotal=each*qty; const after=Math.round(subtotal*(100-disc))/100; const ans=Math.round(pay-after);
+    return { text:`${m} buys ${qty} items at ${each} coins each, ${disc}% off, pays with ${pay}. Change = ?`, answer:ans, explain:"Multiply, discount, subtract." }; }
+  const shape=Math.random()<0.5?"rectangle":"triangle"; const a=randInt(6,25), b=randInt(6,25); const ans=shape==="rectangle"?a*b:(a*b)/2;
+  return { text: shape==="rectangle"?`${m}'s garden is ${a}×${b}. Area = ?`:`${m} flies over a triangle (base ${a}, height ${b}). Area = ?`, answer:
